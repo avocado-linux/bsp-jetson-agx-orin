@@ -1,10 +1,11 @@
-default_target: jetson-agx-orin-devkit
+default_target: jetson-agx-orin
 supported_targets:
-  - jetson-agx-orin-devkit
+  - jetson-agx-orin          # 2026 feed
+  - jetson-agx-orin-devkit  # 2024 feed
 
 extensions:
-  avocado-bsp-jetson-agx-orin-devkit:
-    version: 0.1.0
+  avocado-bsp-jetson-agx-orin:
+    version: 0.2.0
     release: r0
     summary: Board support for the Nvidia Jetson AGX Orin devkit
     description: Board support for the Nvidia Jetson AGX Orin devkit
@@ -35,30 +36,33 @@ extensions:
       - udevadm trigger --type=devices --action=add --settle
       - nvbootctrl verify
 
-    # Common packages: same name in both kernel feeds (linux-yocto 6.6 and
-    # linux-jammy-nvidia-tegra 5.15). avocado-cli auto-suffixes kernel-family
+    # Common packages: available for both kernels (linux-yocto 6.18 and
+    # linux-noble-nvidia-tegra 6.8 L4T). avocado-cli auto-suffixes kernel-family
     # names with -${KERNEL_VERSION} at install time; the nv-kernel-module-*
     # RPMs (from nvidia-kernel-oot) Provide both prefixed and unprefixed
     # variants so unqualified `kernel-module-*` references resolve to the
-    # versioned NVIDIA OOT package.
+    # in-tree package or the versioned NVIDIA OOT package on each kernel.
     packages:
       kernel-module-at24: '*'
       kernel-module-cec: '*'
-      kernel-module-crct10dif-ce: '*'
       kernel-module-fusb301: '*'
       kernel-module-governor-pod-scaling: '*'
-      kernel-module-governor-userspace: '*'
+      # governor-userspace is built into the kernel (CONFIG_CPU_FREQ_GOV_USERSPACE=y)
+      # on both linux-yocto 6.18 and linux-noble 6.8 — no separate module to install.
       nv-kernel-module-host1x: '*'
       kernel-module-host1x-fence: '*'
       kernel-module-host1x-nvhost: '*'
       kernel-module-ina3221: '*'
       kernel-module-mc-hwpm: '*'
       kernel-module-mc-utils: '*'
-      # Ethernet stack — onboard 1GbE on the P3737 carrier goes through the
-      # Tegra234 MGBE controller (NVIDIA OOT nvethernet driver, resolved
+      # Ethernet stack — the onboard RJ45 on the P3737-0000 carrier is a 10GbE
+      # port: Tegra234 MGBE controller (NVIDIA OOT nvethernet driver, resolved
       # via nv-kernel-module-nvethernet's `Provides: kernel-module-nvethernet`)
-      # with a Realtek RTL8211F PHY (kernel-module-realtek). r8169 covers any
-      # discrete PCIe Realtek NIC; stmmac is the alt-kernel (5.15) MAC path.
+      # driving an Aquantia AQR113C copper PHY. The AQR113C PHY driver
+      # (kernel-module-aquantia) lives in the kernel-6.18 block below — it is a
+      # mainline PHY module on linux-yocto; the L4T kernel builds it in-tree.
+      # realtek/r8169 cover any discrete PCIe Realtek NIC; stmmac is the
+      # non-nvethernet MAC path.
       kernel-module-nvethernet: '*'
       kernel-module-realtek: '*'
       kernel-module-r8169: '*'
@@ -90,18 +94,21 @@ extensions:
       kernel-module-snd-soc-tegra-pcm: '*'
       kernel-module-snd-soc-tegra-utils: '*'
       kernel-module-snd-soc-tegra186-arad: '*'
-      nv-kernel-module-snd-soc-tegra186-asrc: '*'
-      nv-kernel-module-snd-soc-tegra186-dspk: '*'
-      nv-kernel-module-snd-soc-tegra210-admaif: '*'
-      nv-kernel-module-snd-soc-tegra210-adx: '*'
-      nv-kernel-module-snd-soc-tegra210-ahub: '*'
-      nv-kernel-module-snd-soc-tegra210-amx: '*'
-      nv-kernel-module-snd-soc-tegra210-dmic: '*'
-      nv-kernel-module-snd-soc-tegra210-i2s: '*'
-      nv-kernel-module-snd-soc-tegra210-mixer: '*'
-      nv-kernel-module-snd-soc-tegra210-mvc: '*'
-      nv-kernel-module-snd-soc-tegra210-ope: '*'
-      nv-kernel-module-snd-soc-tegra210-sfc: '*'
+      # In-tree ASoC modules on both linux-yocto 6.18 and linux-noble 6.8
+      # (kernel-module-*, not the nv- OOT prefix). Unprefixed so they resolve
+      # directly to the in-tree package on each kernel.
+      kernel-module-snd-soc-tegra186-asrc: '*'
+      kernel-module-snd-soc-tegra186-dspk: '*'
+      kernel-module-snd-soc-tegra210-admaif: '*'
+      kernel-module-snd-soc-tegra210-adx: '*'
+      kernel-module-snd-soc-tegra210-ahub: '*'
+      kernel-module-snd-soc-tegra210-amx: '*'
+      kernel-module-snd-soc-tegra210-dmic: '*'
+      kernel-module-snd-soc-tegra210-i2s: '*'
+      kernel-module-snd-soc-tegra210-mixer: '*'
+      kernel-module-snd-soc-tegra210-mvc: '*'
+      kernel-module-snd-soc-tegra210-ope: '*'
+      kernel-module-snd-soc-tegra210-sfc: '*'
       kernel-module-spi-tegra114: '*'
       kernel-module-spidev: '*'
       kernel-module-tegra-aconnect: '*'
@@ -128,30 +135,24 @@ extensions:
       cuda-cudart: '*'
       tegra-configs-udev: '*'
       tegra-libraries-cuda: '*'
-      tegra-nvphs: '*'
       tegra-nvpower: '*'
       tegra-nvsciipc: '*'
-      tegra-nvstartup: '*'
 
-    # 5.15 (linux-jammy-nvidia-tegra) uses NVIDIA's downstream Realtek shim
-    # for the M.2 wifi card; mainline rtw88 isn't built for this kernel.
-    # Mirrors meta-tegra/conf/machine/include/devkit-wifi.inc:NVIDIA_WIFI which
-    # avocado-pkg-rootfs doesn't pick up automatically (devkit-wifi.inc routes
-    # via MACHINE_EXTRA_RRECOMMENDS, not MACHINE_ESSENTIAL_EXTRA_RDEPENDS).
-    #
-    # The L4T rtl8822ce driver expects firmware at top-level /lib/firmware
-    # (rtl8822_setting.bin, rtl8822cu_fw, rtl8822cu_config) which only
-    # tegra-firmware-rtl8822 ships. linux-firmware-rtl8822 ships rtl_bt/* and
-    # rtw88/* — wrong path/format for the L4T driver.
+    # --- 2024 feed (scarthgap) kernels -------------------------------------
+    # These two blocks serve the 2024 feed only. `tegra-nvphs`, `tegra-nvstartup`
+    # and `crct10dif-ce` exist in the 2024 feed but are absent (or built in) on
+    # the wrynose kernels, so they are scoped here rather than left in common.
+
+    # 5.15 (linux-jammy-nvidia-tegra, L4T r35/36).
     kernel-5.15.*:
       packages:
         nv-kernel-module-rtl8822ce: '*'
         tegra-firmware-rtl8822: '*'
+        kernel-module-crct10dif-ce: '*'
+        tegra-nvphs: '*'
+        tegra-nvstartup: '*'
 
-    # 6.6 (linux-yocto) uses the upstream rtw88 driver family for the 8822CE,
-    # and ships drm-display-helper as a separate module (5.15 statically links
-    # the helpers into drm.ko). linux-firmware-rtl8822 ships rtl_bt/* and
-    # rtw88/* firmware blobs at the paths the upstream drivers expect.
+    # 6.6 (linux-yocto scarthgap) — upstream rtw88 for the 8822CE.
     kernel-6.6.*:
       packages:
         kernel-module-drm-display-helper: '*'
@@ -160,6 +161,69 @@ extensions:
         kernel-module-rtw88-core: '*'
         kernel-module-rtw88-pci: '*'
         linux-firmware-rtl8822: '*'
+        kernel-module-crct10dif-ce: '*'
+        tegra-nvphs: '*'
+        tegra-nvstartup: '*'
+
+    # --- 2026 feed (wrynose) kernels ---------------------------------------
+
+    # 6.8 (linux-noble-nvidia-tegra, L4T r39.2) uses NVIDIA's downstream Realtek
+    # shim for the M.2 wifi card; mainline rtw88 isn't built for this kernel.
+    # Mirrors meta-tegra/conf/machine/include/devkit-wifi.inc:NVIDIA_WIFI which
+    # avocado-pkg-rootfs doesn't pick up automatically (devkit-wifi.inc routes
+    # via MACHINE_EXTRA_RRECOMMENDS, not MACHINE_ESSENTIAL_EXTRA_RDEPENDS).
+    #
+    # The L4T rtl8822ce driver expects firmware at top-level /lib/firmware
+    # (rtl8822_setting.bin, rtl8822cu_fw, rtl8822cu_config) which only
+    # tegra-firmware-rtl8822 ships. linux-firmware-rtl8822 ships rtl_bt/* and
+    # rtw88/* — wrong path/format for the L4T driver.
+    #
+    # crct10dif-ce (T10-DIF CRC, ARM64 CE) is a module only on the L4T 6.8
+    # kernel; linux-yocto 6.18 doesn't ship it as a separate module.
+    kernel-6.8.*:
+      packages:
+        nv-kernel-module-rtl8822ce: '*'
+        tegra-firmware-rtl8822: '*'
+        kernel-module-crct10dif-ce: '*'
+
+    # 6.18 (linux-yocto) uses the upstream rtw88 driver family for the 8822CE,
+    # and ships drm-display-helper as a separate module (the L4T kernel
+    # statically links the helpers into drm.ko). linux-firmware-rtl8822 ships
+    # rtl_bt/* and rtw88/* firmware blobs at the paths the upstream drivers expect.
+    kernel-6.18.*:
+      packages:
+        kernel-module-drm-display-helper: '*'
+        kernel-module-rtw88-8822c: '*'
+        kernel-module-rtw88-8822ce: '*'
+        kernel-module-rtw88-core: '*'
+        kernel-module-rtw88-pci: '*'
+        linux-firmware-rtl8822: '*'
+        # Onboard 10GbE MAC (Tegra234 MGBE). On linux-yocto the controller is
+        # driven by mainline dwmac-tegra, NOT the OOT nvethernet listed in the
+        # common block above — nvethernet is the L4T path only. dwmac-tegra is
+        # the only driver that matches the DT node:
+        #
+        #   description: NVIDIA Tegra MGBE driver
+        #   alias:       of:N*T*Cnvidia,tegra234-mgbe
+        #   depends:     stmmac-platform,stmmac
+        #
+        # kernel-module-stmmac in the common block is only the core library and
+        # binds nothing on its own, so without this the tegra234-mgbe node has
+        # no driver, no eth0 appears, and the AQR113C PHY below is never even
+        # probed (there is no MAC to attach it to). The RPM Requires pull
+        # kernel-module-stmmac and kernel-module-stmmac-platform automatically,
+        # so this one entry brings the whole MAC stack.
+        # CONFIG_DWMAC_TEGRA=m comes from the tegra-kernel-cache kmeta
+        # (cfg/tegra.cfg), so the package is always built for this kernel.
+        kernel-module-dwmac-tegra: '*'
+        # Onboard 10GbE copper PHY (Aquantia AQR113C on MGBE). Built as a
+        # module on linux-yocto (CONFIG_AQUANTIA_PHY=m, from the kmeta's
+        # cfg/jetson-devkit.cfg); without it the port falls back to the generic
+        # Clause-45 driver, the PHY never initialises (phy_id reads 0), and the
+        # link flaps. marvell10g is a safety net —
+        # post-acquisition some AQR variants match the Marvell 10G driver.
+        kernel-module-aquantia: '*'
+        kernel-module-marvell10g: '*'
 
 sdk:
   image: docker.io/avocadolinux/sdk:{{ env.AVOCADO_DISTRO_RELEASE }}
