@@ -1,16 +1,16 @@
-# bsp-jetson-agx-orin-devkit
+# bsp-jetson-agx-orin
 
 Board support for the Nvidia Jetson AGX Orin devkit
 
 ## Using this extension
 
-`bsp-jetson-agx-orin-devkit` is an [Avocado](https://avocadolinux.org) extension — a reusable fragment of
+`bsp-jetson-agx-orin` is an [Avocado](https://avocadolinux.org) extension — a reusable fragment of
 build- and runtime-configuration that you compose into your own Avocado project. To use it,
 declare it as a package-sourced extension in your `avocado.yaml` and add it to a runtime:
 
 ```yaml
 extensions:
-  avocado-bsp-jetson-agx-orin-devkit:
+  avocado-bsp-jetson-agx-orin:
     source:
       type: package
       version: "*"        # or pin an exact version
@@ -18,7 +18,7 @@ extensions:
 runtimes:
   my-runtime:
     extensions:
-      - avocado-bsp-jetson-agx-orin-devkit
+      - avocado-bsp-jetson-agx-orin
 ```
 
 Then install and build:
