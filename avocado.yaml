@@ -229,23 +229,38 @@ rubicon:
   # Jetson AGX Orin Developer Kit through its TOPO debug MCU (0955:7045,
   # micro-USB J26) on the Rubicon's USB port, beside the flashing port
   # (USB-C J40). boardctl, from the SDK, presses power, reset and
-  # force-recovery through it: no relays, no J42 wiring. The same MCU is
+  # force-recovery through it: no J42 wiring. The same MCU is
   # the console (four CDC-ACM ports).
   # UNVERIFIED on a bench: boardctl's orin-jetson target for this kit, and
   # which of the TOPO's four ports is UART3 (console.port).
+  # power: a relay in the kit's supply (for a USB-C PD brick, its AC side):
+  # a hard power cycle for a kit that stops answering, since the TOPO is
+  # powered from USB and outlives one. Unwired, the steps that switch it
+  # do nothing.
+  wiring:
+    power: "relay in the kit's supply (AC side of the USB-C PD adapter)"
   console:
     port: 0
   run:
+    # Supply off and back: clears a kit that is stuck. The kit may come up
+    # on its own; the boardctl steps after it start with a forced off.
+    agx-orin-power-cycle:
+      - out: { power: "off" }
+      - wait_ms: 5000
+      - out: { power: "on" }
+      - wait_ms: 3000
     # Forced off, then FORCE_RECOVERY held while ONKEY powers it up: RCM
     # from any state. Then hold the APX device (0955:7023, or 7223 on the
     # P3701-0004 module) and the flash initramfs' gadget. Exact ids, not
     # 0955:*, which would take the TOPO (the console) too.
     agx-orin-enter-recovery:
+      - run: agx-orin-power-cycle
       - with_usb: { id: "0955:7045", run: [boardctl, --target, orin-jetson, recovery] }
       - hold_usb: ["0955:7023", "0955:7223", "1d6b:*"]
       - wait_usb: { id: "0955:7023", timeout_s: 60 }
     # Boot whatever is installed: forced off, then ONKEY.
     agx-orin-boot:
+      - run: agx-orin-power-cycle
       - with_usb: { id: "0955:7045", run: [boardctl, --target, orin-jetson, power_on] }
       - run: agx-orin-boot-check
     agx-orin-power-off:
