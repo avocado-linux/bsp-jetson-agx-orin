@@ -5,7 +5,7 @@ supported_targets:
 
 extensions:
   avocado-bsp-jetson-agx-orin:
-    version: 0.2.0
+    version: 0.2.1
     release: r0
     summary: Board support for the Nvidia Jetson AGX Orin devkit
     description: Board support for the Nvidia Jetson AGX Orin devkit
@@ -29,6 +29,9 @@ extensions:
     modprobe:
       - nvme
       - nvethernet
+      # i2c-dev never autoloads (the Tegra I2C controllers load from the
+      # device tree); without it there is no /dev/i2c-*.
+      - i2c-dev
 
     on_merge:
       - udevadm control --reload
@@ -43,6 +46,12 @@ extensions:
     # variants so unqualified `kernel-module-*` references resolve to the
     # in-tree package or the versioned NVIDIA OOT package on each kernel.
     packages:
+      # I2C: modules on the L4T 6.8 kernel, built in on linux-yocto 6.18 (whose
+      # kernel package provides these names), so they belong in the common
+      # list. Without them a 6.8 system has no I2C buses at all.
+      kernel-module-i2c-tegra: '*'
+      kernel-module-i2c-tegra-bpmp: '*'
+      kernel-module-i2c-dev: '*'
       kernel-module-at24: '*'
       kernel-module-cec: '*'
       kernel-module-fusb301: '*'
