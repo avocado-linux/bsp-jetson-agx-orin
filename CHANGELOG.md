@@ -4,6 +4,14 @@ All notable changes to avocado-bsp-jetson-agx-orin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2]
+
+### Changed
+- The 2024 feed now uses the target name `jetson-agx-orin`, as the 2026 feed does:
+  meta-avocado scarthgap renamed `jetson-agx-orin-devkit` to `jetson-agx-orin`.
+  `supported_targets` lists the one name, and CI builds and releases it for
+  both feeds. A 2024 project must set `default_target: jetson-agx-orin`.
+
 ## [0.2.0]
 
 ### Changed
