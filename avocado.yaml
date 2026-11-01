@@ -1,11 +1,10 @@
 default_target: jetson-agx-orin
 supported_targets:
-  - jetson-agx-orin          # 2026 feed
-  - jetson-agx-orin-devkit  # 2024 feed
+  - jetson-agx-orin
 
 extensions:
   avocado-bsp-jetson-agx-orin:
-    version: 0.2.1
+    version: 0.2.2
     release: r0
     summary: Board support for the Nvidia Jetson AGX Orin devkit
     description: Board support for the Nvidia Jetson AGX Orin devkit
